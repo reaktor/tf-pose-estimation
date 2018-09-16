@@ -1,13 +1,4 @@
-./models
-./models/*
-./models/*/*
-./models/*/*/*
-./models/*/*/*/*
-models
-models/*
-models/*/*
-models/*/*/*
-models/*/*/*/*
+
 *.meta
 *.index
 *.data-*
@@ -18,6 +9,5 @@ models/*/*/*/*
 tests
 graph*.pb
 chk*.meta
-lifting
 slim
 

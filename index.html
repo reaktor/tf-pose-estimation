@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html style="background-color: #25221e;">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Recognition Service</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+html { font-size: 18px; color: #dbdbdb; font-family: sans-serif }
+body { padding: 5vw; max-width: 60em; margin: 0 auto; }
+pre { padding: 1em; background: rgba(0,0,0,0.2);}
+.c0 { color: darkcyan; }
+.c1 { color: chartreuse; }
+.c2 { color: chocolate; }
+    </style>
+</head>
+<body>
+<h1>Recognition Service</h1>
+<span>Testing the API</span>
+<pre>
+(<span class="c0">echo</span> -n <span class="c2">'{"image": "'</span>; <span class="c0">base64</span> <span class="c1">~/Pictures/1.jpg</span>; <span class="c0">echo</span> <span class="c2">'"}'</span>) |
+    <span class="c0">curl</span> -H <span class="c2">"Content-Type: application/json"</span> -d @-  <span class="c1">http://<script>document.write(window.location.host)</script>/recognize/</span> 
+</pre>
+</body>
+</html>

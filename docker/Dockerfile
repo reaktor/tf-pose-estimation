@@ -17,12 +17,22 @@ cmake -D CMAKE_BUILD_TYPE=RELEASE \
 	-D INSTALL_PYTHON_EXAMPLES=ON \
 	-D BUILD_opencv_python3=yes -D PYTHON_EXECUTABLE=/usr/bin/python3 .. && \
 make -j8 && make install && rm -rf /root/opencv/ && \
-mkdir -p /root/tf-openpose && \
+mkdir -p /root/tf-openpose
+
+COPY . /root/tf-openpose/
+
+# initialize pafprocess
+RUN cd /root/tf-openpose/ && \
+cd /root/tf-openpose/tf_pose/pafprocess/ && \
+apt-get -yq install swig && \
+swig -python -c++ pafprocess.i && python3 setup.py build_ext --inplace && \
 rm -rf /tmp/*.tar.gz && \
 apt-get clean && rm -rf /tmp/* /var/tmp* /var/lib/apt/lists/* && \
 rm -f /etc/ssh/ssh_host_* && rm -rf /usr/share/man?? /usr/share/man/??_*
 
-COPY . /root/tf-openpose/
+# Might not be necessary...
+COPY models /root/tf-openpose/
+
 WORKDIR /root/tf-openpose/
 
 RUN cd /root/tf-openpose/ && pip3 install -U setuptools && \
@@ -34,6 +44,6 @@ cd cocoapi/PythonAPI && python3 setup.py build_ext --inplace && python3 setup.py
 mkdir /coco && cd /coco && wget http://images.cocodataset.org/annotations/annotations_trainval2017.zip && \
 unzip annotations_trainval2017.zip && rm -rf annotations_trainval2017.zip
 
-ENTRYPOINT ["python3", "pose_dataworker.py"]
+ENTRYPOINT ["/bin/bash"]
 
 #ENV http_proxy= https_proxy=

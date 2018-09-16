@@ -9,3 +9,7 @@ scipy
 slidingwindow
 tqdm
 git+https://github.com/ppwwyyxx/tensorpack.git
+falcon
+ujson
+cython
+imageio
