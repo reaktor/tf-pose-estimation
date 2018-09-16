@@ -1,3 +1,15 @@
+"""
+file: run.0-ex-out-decorate.py
+Usage
+```sh
+docker run --entrypoint="/usr/bin/python3" --volume="$(pwd)/out:/out" --expose=8000/tcp -it care-tpe-scripts:latest \
+    run.0-ex-out-decorated.py --model=mobilenet_thin --resize=656x368 \
+    --out-dir=/out --prefix=dl-ball- \
+    --image="https://img.freepik.com/free-photo/ball-guy-soccer-man-playing_1368-1897.jpg?size=338&ext=jpg"
+open ./out/dl-ball-0-input.png
+open ./out/dl-ball-2-decorated.png
+```
+"""
 import argparse
 import logging
 import sys
@@ -55,12 +67,12 @@ if __name__ == '__main__':
     cv2.imwrite('%s/%s0-input.png' % (out_dir, prefix), image)
     t = time.time()
     humans = e.inference(image, resize_to_default=(w > 0 and h > 0), upsample_size=args.resize_out_ratio)
+    # check out these humans!
     print(humans)
 
     elapsed = time.time() - t
 
     logger.info('inference image: %s in %.4f seconds.' % (args.image, elapsed))
 
-    cv2.imwrite('%s/%s1-test.png' % (out_dir, prefix), image)
     image = TfPoseEstimator.draw_humans(image, humans, imgcopy=False)
     cv2.imwrite('%s/%s2-decorated.png' % (out_dir, prefix), image)

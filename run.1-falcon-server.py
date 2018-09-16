@@ -1,3 +1,20 @@
+"""
+file: run.1-falcon-server.py
+
+This is the beginning of a falcon server connected to the tf_pose estimator
+
+Usage
+```sh
+source ./docker-build.sh && \
+docker run --entrypoint="/usr/bin/python3" --expose=8000/tcp -it care-tpe-scripts:latest \
+    run.1-falcon-server.py --model=mobilenet_thin --resize=656x368
+# get ip
+docker container ls
+docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $DOCKER_CONTAINER_ID
+
+open ./out/dl-ball-2-decorated.png
+```
+"""
 import argparse
 import logging
 import sys
@@ -81,7 +98,11 @@ if __name__ == '__main__':
     httpd = simple_server.make_server('0.0.0.0', 8000, app)
     elapsed = time.time() - t_falcon
     logger.info('initialized falcon server in %.4f seconds.' % elapsed)
-    logger.info('Serving at %s' % '0.0.0.0:8000')
+
+    # get local ip
+    import socket
+    localhost = socket.gethostbyname(socket.gethostname())
+    logger.info('Serving at http://%s%s' % (localhost, ':8000'))
     httpd.serve_forever()
 
 

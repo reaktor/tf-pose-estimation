@@ -1,3 +1,24 @@
+"""
+file: run.3-ex-out-serial.py
+
+As able, get the latest image and analyze in sequence, then repeat
+
+Usage:
+```sh
+# as decorated images,
+# notice the docker --volume setting matches python --out-dir value
+docker run --entrypoint="/usr/bin/python3" --volume="$(pwd)/out:/out" -it care-tpe-scripts:latest \
+    run.3-ex-out-serial.py --model=mobilenet_thin --resize=432x368 \
+    --fps=4 --out-dir='/out' \
+    --image-url="http://192.168.1.132:55627/camera.jpg"
+
+# as printed out humans, use --out-dir=''
+docker run --entrypoint="/usr/bin/python3" --volume="$(pwd)/out:/out" -it care-tpe-scripts:latest \
+    run.3-ex-out-serial.py --model=mobilenet_thin --resize=432x368 \
+    --fps=4 --out-dir='' \
+    --image-url="http://192.168.1.132:55627/camera.jpg"
+```
+"""
 import argparse
 import logging
 import sys
@@ -20,7 +41,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='tf-pose-estimation run')
     parser.add_argument('--image-url', type=str, default='')
     parser.add_argument('--fps', type=int, default=4,
-                        help='default=4')
+                        help='Limit the frames per second to this value. default=4')
     parser.add_argument('--model', type=str, default='cmu', help='cmu / mobilenet_thin')
 
     parser.add_argument('--resize', type=str, default='0x0',
