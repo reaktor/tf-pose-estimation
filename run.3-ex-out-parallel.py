@@ -29,21 +29,19 @@ from tf_pose.networks import get_graph_path, model_wh
 import threading
 from queue import Queue
 
-print_lock = threading.Lock()
 queue_lock = threading.Lock()
 
 t0 = time.time()
 
 logger = logging.getLogger('TfPoseEstimator')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 formatter = logging.Formatter('[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s')
 
 class QueueProcessor(object):
     def __init__(self):
-        self.start_time = time.time()
-        self.count_frames = 0
-        self.start_image_queue = Queue(maxsize=12)
-        self.image_queue = Queue(maxsize=6)
+        self.start_image_queue = Queue(maxsize=8) # max size should really be just the number of image processor threads
+        self.image_queue = Queue(maxsize=8)
+        self.human_queue = Queue(maxsize=12)
         self.print_lock = threading.Lock()
     
     def tprint(self, arg):
@@ -57,27 +55,40 @@ class QueueProcessor(object):
     
     def add_images_to_queue(self):
         while True:
+            #! start_time = time.time()
             # maybe block until ready to download new images
-            self.tinfo('add_images_to_queue: waiting on self.start_image_queue.put(time.time())')
-            self.start_image_queue.put(time.time())
-            self.tinfo('add_images_to_queue: continuing from self.start_image_queue.put(time.time())')
-
+            #! self.tinfo('add_images_to_queue: (waiting       ) self.start_image_queue.get()')
+            _req_time = self.start_image_queue.get()
+            #! self.tinfo('add_images_to_queue: (waited %.4fs) continuing from self.start_image_queue.get()' % (time.time() - start_time))
             # download latest image
-            t_dl = time.time()
-            resp = urllib.request.urlopen(image_url)
-            elapsed_dl = time.time() - t_dl
-            self.tinfo('downloaded image in %.4f seconds. (%s)' % (elapsed_dl, args.image_url))
+            #! t_dl = time.time()
+            try:
+                resp = urllib.request.urlopen(image_url)
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except:
+                self.tinfo('add_images_to_queue: (error         ) downloading image failed')
+                continue
+
+            #! elapsed_dl = time.time() - t_dl
+            #! self.tinfo('add_images_to_queue: (downlo %.4fs) downloaded image %s' % (elapsed_dl, args.image_url))
             image = np.asarray(bytearray(resp.read()), dtype="uint8")
             image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+
+            self.start_image_queue.task_done()
 
             if image is None:
                 with self.print_lock:
                     logger.error('Image can not be read from "%s"' % args.image)
             else:
                 # add identifying info to item
-                self.tinfo('add_images_to_queue: waiting on self.image_queue.put((image_url, image))')
+                #! self.tinfo('add_images_to_queue: (waiting       ) self.image_queue.put((image_url, image))')
+                #! t_put = time.time()
                 self.image_queue.put((image_url, image))
-                self.tinfo('add_images_to_queue: continuing from self.image_queue.put((image_url, image))')
+                #! with self.print_lock:
+                #!     self.info('add_images_to_queue: (waited %.4fs) continuing from self.image_queue.put((image_url, image))' % (time.time() - t_put))
+                #!     self.info('add_images_to_queue: (loop   %.4fs) completed loop' % (time.time() - start_time))
+
 
 
     def process_image_queue(self):
@@ -88,19 +99,24 @@ class QueueProcessor(object):
             e = TfPoseEstimator(get_graph_path(args.model), target_size=(w, h))
         
         while True:
-            self.tinfo('process_image_queue: waiting on self.image_queue.get()')
+            #! start_time = time.time()
+            # trigger ready to process another image
+            #! self.tinfo('process_image_queue: (waiting       ) self.start_image_queue.put(time.time())')
+            self.start_image_queue.put(time.time(), block=False)
+            #! self.tinfo('process_image_queue: (waited %.4fs) continuing from self.start_image_queue.put(time.time())' % (time.time() - start_time))
+            
+            #! get_time = time.time()
+            #! self.tinfo('process_image_queue: (waiting       ) self.image_queue.get()')
             (_image_url, current_image) = self.image_queue.get()
-            self.tinfo('process_image_queue: continuing from self.image_queue.get()')
+            #! self.tinfo('process_image_queue: (waited %.4fs) continuing from self.image_queue.get()' % (time.time() - get_time))
             humans = e.inference(current_image, resize_to_default=(w > 0 and h > 0), upsample_size=args.resize_out_ratio)
-            started_t = self.start_image_queue.get()
-            with self.print_lock:
-                self.count_frames += 1
-                print(humans)
-                self.info('started_t diff %.4fs' % (time.time() - started_t))
 
-                # once completed, trigger getting new images
-                self.info('process_image_queue: self.image_queue.task_done()')
-                self.image_queue.task_done()
+            self.image_queue.task_done()
+
+            self.human_queue.put(humans, block=False)
+            #! with self.print_lock:
+            #!     # once completed, trigger getting new images
+            #!     self.info('process_image_queue: (loop   %.4fs) completed loop' % (time.time() - start_time))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='tf-pose-estimation run')
@@ -122,22 +138,39 @@ if __name__ == '__main__':
     qp = QueueProcessor()
 
     try:
-        t = threading.Thread(target=qp.process_image_queue)
-        t.daemon = True
-        t.start()
+        # start listening for ability to add images to process queue
         t = threading.Thread(target=qp.add_images_to_queue)
         t.daemon = True
         t.start()
+        # start downloading the first image.
+        # also should ensure that the image getter is always one image ahead of the processor
+        qp.start_image_queue.put(time.time())
 
-        t0 = time.time()
-        for i in range(4):
-            qp.start_image_queue.put(time.time())
+        # the processors will be ready
+        for i in range(2):
+            t = threading.Thread(target=qp.process_image_queue)
+            t.daemon = True
+            t.start()
 
         print(threading.enumerate())
-        qp.start_image_queue.join()
+
+        # huemon tracker
+        t0 = None
+        c0 = 0
+        while True:
+            if t0 is None:
+                t0 = time.time()
+            human = qp.human_queue.get()
+            with queue_lock:
+                print(human)
+                c0 += 1
+            qp.human_queue.task_done()
+
 
     except (KeyboardInterrupt, SystemExit):
         elapsed = time.time() - t0
-        print('total frames  %d' % qp.count_frames)
+        print()
+        print('total frames  %d' % c0)
         print('total elapsed %.4fs' % elapsed)
-        print('fps           %.4f' % (elapsed / i))
+        print('avg fps       %.4f' % (c0 / elapsed))
+        print('avg sec       %.4fs' % (elapsed / c0))

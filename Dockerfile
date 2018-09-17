@@ -11,11 +11,11 @@ RUN cd /root/tf-openpose/ && pip3 install -r requirements.txt
 ENV PYTHONPATH=/root/tf-openpose/tf_pose/:/root/tf-openpose/
 RUN pip install -v --no-binary :all: falcon
 
-# Only update python files
-COPY *.html /root/tf-openpose/
-COPY *.py /root/tf-openpose/
+# Only update source files - order starting with least frequently updated
 COPY tf_pose/*.py /root/tf-openpose/tf_pose/
 COPY images/* /root/tf-openpose/images/
+COPY *.html /root/tf-openpose/
+COPY *.py /root/tf-openpose/
 
 # COPY models /root/tf-openpose/
 WORKDIR /root/tf-openpose/
