@@ -238,6 +238,16 @@ class Human:
     def __repr__(self):
         return self.__str__()
 
+    def to_pyon(self, name_map=None):
+        if type(name_map) is list:
+            name_map = lambda part: name_map[part.part_idx]
+        elif name_map is None:
+            name_map = lambda part: part.get_part_name()
+        return {
+            name_map(part): part.to_pyon()
+            for idx, part in self.body_parts.items()
+        }
+
 
 class BodyPart:
     """
@@ -261,6 +271,9 @@ class BodyPart:
 
     def __repr__(self):
         return self.__str__()
+
+    def to_pyon(self):
+        return dict(x=self.x, y=self.y, score=self.score)
 
 
 class PoseEstimator:
