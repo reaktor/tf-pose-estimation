@@ -5,7 +5,9 @@ import logging
 
 from enum import Enum
 
-class Recognizer:
+from feature_detection.transducer import Transducer
+
+class Recognizer(Transducer):
     """Construct a recognizer with a given structure.
         Args:
             transitions:
@@ -35,35 +37,40 @@ class Recognizer:
         self.state = initial_state
         self.context = dict() if context_init is None else context_init(*params, **kparams)
 
+        self.state_counter = 0
+        self.condition = self.State.Running
+
         # TODO: Check transitions for sane structure
         self.transitions = transitions
 
         # TODO: Handle explicit states
 
+    def is_done(self):
+        return self.condition == self.State.Done
+
     def next(self, in_record):
         logging.debug("Processing:")
-        #logging.debug(" -- input %.100s", str(in_record))
+        
         in_state = self.state
         logging.debug(" -- current state (%s)", in_state)
-        #logging.debug(" -- context state %s", str(self.context))
-      
+
+        # This is the case for using the recognizer symbolically
         if self.transitions is None:
             out_state, out_record = in_state, in_record
 
         elif in_state in self.transitions:
             t = self.transitions[in_state]
             result = t(self.context, in_state, in_record)
-            if result is None:
-                out_state, out_record = in_state, None
-            else:
-                out_state, out_record = result
+            out_state, out_record = (in_state, None) if result is None else result
 
         else:
             logging.debug(" -- reached terminal state.")
+            self.condition = self.State.Done
             return None
 
         logging.debug(" -- new state (%s)", out_state)
-        #logging.debug(" -- outputting %.100s", str(out_record))
+        logging.info("%8d : State = %s", self.state_counter, out_state)
+
         self.state = out_state
-        logging.info(">> State >> %s", out_state)
+        self.state_counter += 1
         return out_record

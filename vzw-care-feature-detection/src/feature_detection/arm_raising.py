@@ -81,7 +81,11 @@ class ArmRaised:
         wrist_from_belt = abs(wrist['y'] - belt['y'])
         quiescents = wrist_from_belt / torso
         if quiescents < self.close_to_belt:
-            return self.State.Stable, {"time": in_data['time'], "event": "Stablized"}
+            return self.State.Stable, {
+                "time": in_data['time'],
+                "event": "Stablized",
+                "arm": self.side
+            }
         
         return None
 
@@ -92,7 +96,11 @@ class ArmRaised:
 
         raise_phase = self._raise_phase(*row)
         if raise_phase >= self.raise_thresh:
-            return self.State.Raised, {"time": in_data['time'], "event": "Raised"}
+            return self.State.Raised, {
+                "time": in_data['time'],
+                "event": "Raised",
+                "arm": self.side
+            }
         
         return None
 
@@ -103,7 +111,11 @@ class ArmRaised:
         
         raise_phase = self._raise_phase(*row)
         if raise_phase < self.drop_thresh:
-            return self.State.Stable, {"time": in_data['time'], "event": "Dropped"}
+            return self.State.Stable, {
+                "time": in_data['time'],
+                "event": "Dropped",
+                "arm": self.side
+            }
         
         return None
 

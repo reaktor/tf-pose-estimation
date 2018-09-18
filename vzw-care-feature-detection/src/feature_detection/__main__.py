@@ -12,6 +12,8 @@ from sys import stdin
 
 from feature_detection import __version__
 from feature_detection.arm_raising import ArmRaised
+from feature_detection.source import InputSource
+from feature_detection.sink import OutputSink
 
 _logger = logging.getLogger(__name__)
 
@@ -56,9 +58,6 @@ def setup_logging(loglevel):
         level=loglevel, stream=sys.stderr, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
     )
 
-def reader(filename=None):
-    return sys.stdin if filename is None else open(filename, 'r')
-
 def main(args):
     """Runs a feature detector off of STDIN outputting features to STDOUT.
     Args:
@@ -67,27 +66,30 @@ def main(args):
     args = parse_args(args)
     setup_logging(args.loglevel)
 
+    reader = InputSource()
     recognizer_right = ArmRaised.make('right')
     recognizer_left = ArmRaised.make('left')
+    writer = OutputSink()
 
-    frame_count = -1
-    for record_str in sys.stdin:
-        frame_count += 1
-        datum = json.loads(record_str)
-        if len(datum) == 0:
+    while True:
+        datum = reader.next()
+        if datum is InputSource.EOF:
+            break
+        
+        if len(datum) < 1:
             continue
         datum_single = datum[0]
+       
+        frame_count = reader.state_counter
         output = recognizer_left.next(datum_single)
         if output is not None:
             output['frame'] = frame_count
-            output['arm'] = 'left'
-            print(json.dumps(output))
+            writer.next(output)
         
         output = recognizer_right.next(datum_single)
         if output is not None:
             output['frame'] = frame_count
-            output['arm'] = 'right'
-            print(json.dumps(output))
+            writer.next(output)
 
 def run():
     """Entry point for console_scripts
