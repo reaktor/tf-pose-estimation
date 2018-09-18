@@ -7,6 +7,8 @@ import json
 from sys import stdin
 from enum import Enum
 
+from urllib import request
+
 from feature_detection.transducer import Transducer
 
 class InputSource(Transducer):
@@ -39,3 +41,25 @@ class InputSource(Transducer):
         datum = json.loads(line)
         self.state_counter += 1
         return datum
+
+class UriPoller(Transducer):
+    """Construct an input source from a uri endpoint.
+        Args:
+            uri: uri to resource.
+            response_parser: function to extract info from response object.
+    """
+    def __init__(self, uri, response_parser):
+        self.uri = uri
+        self.condition = self.State.Running
+        self.response_parser = response_parser
+        logging.info("Reading from %s", self.uri)
+        
+        self.state_counter = 0
+
+    def next(self):
+        logging.debug("Reading from %s", self.uri)
+        res = request.urlopen(self.uri)
+        data = self.response_parser(res)
+        res.close()
+        self.state_counter += 1
+        return data

@@ -11,8 +11,8 @@ import numpy as np
 
 _VERSION = '0.1.1'
 
-cwd = os.path.dirname(os.path.abspath(__file__))
-subprocess.check_output(["bash", "models/graph/cmu/download.sh"], cwd=cwd)
+#cwd = os.path.dirname(os.path.abspath(__file__))
+#subprocess.check_output(["bash", "models/graph/cmu/download.sh"], cwd=cwd)
 
 POSE_DIR = os.path.realpath(os.path.dirname(__file__))
 
@@ -34,13 +34,15 @@ DEPENDENCY_LINKS = [
     'git+https://github.com/ppwwyyxx/tensorpack.git#egg=tensorpack',
 ]
 
-EXT = Extension('_pafprocess',
-                sources=[
-                    'tf_pose/pafprocess/pafprocess_wrap.cpp',
-                    'tf_pose/pafprocess/pafprocess.cpp',
-                ],
-                swig_opts=['-c++'],
-                include_dirs=[np.get_include()])
+EXT = Extension(
+    '_pafprocess',
+    sources=[
+        'tf_pose/pafprocess/pafprocess_wrap.cpp',
+        'tf_pose/pafprocess/pafprocess.cpp',
+    ],
+    swig_opts=['-c++'],
+    include_dirs=[np.get_include()]
+)
 
 setuptools.setup(
     name='tf-pose',
@@ -54,13 +56,17 @@ setuptools.setup(
     author_email='ildoo@ildoo.net',
     license='Apache License 2.0',
     package_dir={'tf_pose_data': 'models'},
-    packages=['tf_pose_data'] +
-             [pkg_name for pkg_name in setuptools.find_packages()  # main package
-              if 'tf_pose' in pkg_name],
-    ext_modules=[EXT],
-    package_data={'tf_pose_data': ['graph/cmu/graph_opt.pb',
-                                   'graph/mobilenet_thin/graph_opt.pb']},
-    py_modules=[
-        "pafprocess"
+    packages=['tf_pose_data'] + [
+        pkg_name for pkg_name in setuptools.find_packages()
+        if 'tf_pose' in pkg_name
     ],
-    zip_safe=False)
+    ext_modules=[EXT],
+    package_data={
+        'tf_pose_data': [
+            'graph/cmu/graph_opt.pb',
+            'graph/mobilenet_thin/graph_opt.pb'
+        ]
+    },
+    py_modules=["pafprocess"],
+    zip_safe=False
+)
