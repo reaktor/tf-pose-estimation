@@ -7,6 +7,24 @@ from enum import Enum
 
 from feature_detection.recognizer import Recognizer
 
+kBodyParts = {
+    1: "Neck",
+    2: "RShoulder",
+    3: "RElbow",
+    4: "RWrist",
+    5: "LShoulder",
+    6: "LElbow",
+    7: "LWrist",
+    8: "RHip",
+    9: "RKnee",
+    11: "LHip",
+    12: "LKnee",
+    14: "REye",
+    15: "LEye",
+    16: "REar",
+    17: "LEar",
+}
+
 kSideMap = {
     'left': {
         'wrist': 'LWrist',
@@ -70,7 +88,7 @@ class ArmRaised:
         return 1.0 - min(1.0, max(0.0, wrist['y'] - shoulder['y'])/torso)
 
     def unknown(self, in_state, in_data):
-        row = self.extractor['all'](in_data, 'wrist', 'belt', 'shoulder')
+        row = self.extractor['all'](in_data, 'wrist', 'hip', 'shoulder')
         if row is None:
             return None
 
@@ -90,7 +108,7 @@ class ArmRaised:
         return None
 
     def stable(self, in_state, in_data):
-        row = self.extractor['all'](in_data, 'wrist', 'belt', 'shoulder')
+        row = self.extractor['all'](in_data, 'wrist', 'hip', 'shoulder')
         if row is None:
             return None
 
@@ -105,7 +123,7 @@ class ArmRaised:
         return None
 
     def raised(self, in_state, in_data):
-        row = self.extractor['all'](in_data, 'wrist', 'belt', 'shoulder')
+        row = self.extractor['all'](in_data, 'wrist', 'hip', 'shoulder')
         if row is None:
             return None
         

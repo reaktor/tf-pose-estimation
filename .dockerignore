@@ -11,3 +11,7 @@ graph*.pb
 chk*.meta
 slim
 
+__pycache__
+__scratch__
+*.egg*
+

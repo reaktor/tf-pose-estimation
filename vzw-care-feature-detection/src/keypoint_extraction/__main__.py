@@ -8,7 +8,6 @@ import sys
 import json
 import logging
 import numpy as np
-#import cv2
 
 from sys import stdin
 import time
@@ -19,14 +18,23 @@ from queue import Queue
 
 queue_lock = threading.Lock()
 
-#from tf_pose.networks import get_graph_path, model_wh
-#from tf_pose.estimator import TfPoseEstimator
+import cv2
+from tf_pose.networks import get_graph_path, model_wh
+from tf_pose.estimator import TfPoseEstimator
 from feature_detection.source import UriPoller
 from feature_detection.sink import OutputSink
 
 from keypoint_extraction import __version__
 
 _logger = logging.getLogger(__name__)
+
+
+FIELDS_MAP = [
+    "Nose", "Neck", "RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist",
+    "MidHip", "RHip", "RKnee", "RAnkle", "LHip", "LKnee", "LAnkle", "REye", "LEye",
+    "REar", "LEar", "LBigToe", "LSmallToe", "LHeel", "RBigToe", "RSmallToe", "RHeel"
+]
+
 
 # Mutation - add annotation
 def annotate_human(human, ts):
@@ -37,21 +45,20 @@ def response_parser(res):
     timestamp = res.getheader('X-Timestamp')
     data = res.read()
     image = np.asarray(bytearray(data), dtype="uint8")
-    #image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+    image = cv2.imdecode(image, cv2.IMREAD_COLOR)
     return image, timestamp
 
 def create_pose_estimator(args):
+    w, h = model_wh(args.resize)
+    w, h = (432, 368) if w == 0 or h == 0 else (w, h)
+    estimator = TfPoseEstimator(get_graph_path(args.model), target_size=(w, h))
+    resize_ratio = args.resize_out_ratio
     def process(image):
-        return [dict(image="hello")]
+        humans_obj = estimator.inference(
+            image, resize_to_default=True, upsample_size=resize_ratio
+        )
+        return [h.to_pyon() for h in humans_obj]
 
-    #w, h = model_wh(args.resize)
-    #w, h = (432, 368) if w == 0 or h == 0 else (w, h)
-    #return TfPoseEstimator(get_graph_path(args.model), target_size=(w, h))
-    #humans_obj = estimate.inference(
-    #    current_image, resize_to_default=(w > 0 and h > 0),
-    #    upsample_size=args.resize_out_ratio
-    #)
-    # to_pyon
     return process
 
 
