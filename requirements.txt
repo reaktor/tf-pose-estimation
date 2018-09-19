@@ -1,5 +1,5 @@
 argparse
-dill
+dill==0.2.7.1
 fire
 matplotlib
 psutil
