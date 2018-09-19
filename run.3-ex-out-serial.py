@@ -10,7 +10,7 @@ Usage:
 docker run --entrypoint="/usr/bin/python3" --volume="$(pwd)/out:/out" -it care-tpe-scripts:latest \
     run.3-ex-out-serial.py --model=mobilenet_thin --resize=432x368 \
     --fps=4 --out-dir='/out' \
-    --image-url="http://192.168.1.132:55627/camera.jpg"
+    --image-url="http://localhost:3000/see/nana-gene/latest.jpg"
 
 # as printed out humans, use --out-dir=''
 docker run --entrypoint="/usr/bin/python3" --volume="$(pwd)/out:/out" -it care-tpe-scripts:latest \
@@ -25,7 +25,10 @@ import sys
 import time
 import urllib.request
 # server
+import requests
 import cv2
+from PIL import Image
+import io
 
 t0 = time.time()
 from tf_pose import common
@@ -40,6 +43,7 @@ formatter = logging.Formatter('[%(asctime)s] [%(name)s] [%(levelname)s] %(messag
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='tf-pose-estimation run')
     parser.add_argument('--image-url', type=str, default='')
+    parser.add_argument('--post-url', type=str, default='')
     parser.add_argument('--fps', type=int, default=4,
                         help='Limit the frames per second to this value. default=4')
     parser.add_argument('--model', type=str, default='cmu', help='cmu / mobilenet_thin')
@@ -63,6 +67,7 @@ if __name__ == '__main__':
         e = TfPoseEstimator(get_graph_path(args.model), target_size=(w, h))
     fps = args.fps
     image_url = args.image_url
+    post_url = args.post_url
     out_dir, prefix = args.out_dir, args.prefix
     logger.info('Tracking image_url: %s' % image_url)
     elapsed = time.time() - t0
@@ -81,7 +86,13 @@ if __name__ == '__main__':
             wait_til = time.time() + wait_gap_secs
             # download latest image
             t_0 = t_dl = time.time()
-            resp = urllib.request.urlopen(image_url)
+            try:
+                resp = urllib.request.urlopen(image_url)
+            except:
+                print('error getting the latest image')
+                time.sleep(1)
+                continue
+
             elapsed_dl = time.time() - t_dl
             logger.info('downloaded image in %.4f seconds. (%s)' % (elapsed_dl, args.image_url))
             t_conv = time.time()
@@ -102,8 +113,18 @@ if __name__ == '__main__':
             humans = e.inference(image, resize_to_default=(w > 0 and h > 0), upsample_size=args.resize_out_ratio)
             elapsed_inf = time.time() - t_inf
             logger.info('inference image in %.4f seconds.' % (elapsed_inf))
+
             elapsed_print = elapsed_dec = 0
-            if out_dir:
+            if post_url:
+                t_print = time.time()
+                image = TfPoseEstimator.draw_humans(image, humans, imgcopy=False)
+                with io.BytesIO() as output:
+                    Image.fromarray(image).save(output, 'jpeg')
+                    requests.post(post_url, data=output.getvalue())
+                print('post_url\'d %s' % post_url)
+                elapsed_print = time.time() - t_print
+                logger.info('posted human image in %.4f seconds.' % (elapsed_print))
+            elif out_dir:
                 t_dec = time.time()
                 image = TfPoseEstimator.draw_humans(image, humans, imgcopy=False)
                 image_out_path = '%s/%srun3-decorated-%d.png' % (out_dir, prefix, i)

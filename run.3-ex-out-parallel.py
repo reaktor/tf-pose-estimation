@@ -18,6 +18,11 @@ import sys
 import time
 import urllib.request
 
+import requests
+import cv2
+from PIL import Image
+import io
+
 from tf_pose import common
 import cv2
 import numpy as np
@@ -113,7 +118,7 @@ class QueueProcessor(object):
 
             self.image_queue.task_done()
 
-            self.human_queue.put(humans, block=False)
+            self.human_queue.put((current_image, humans), block=False)
             #! with self.print_lock:
             #!     # once completed, trigger getting new images
             #!     self.info('process_image_queue: (loop   %.4fs) completed loop' % (time.time() - start_time))
@@ -121,6 +126,7 @@ class QueueProcessor(object):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='tf-pose-estimation run')
     parser.add_argument('--image-url', type=str, default='')
+    parser.add_argument('--post-url', type=str, default='')
     parser.add_argument('--model', type=str, default='cmu', help='cmu / mobilenet_thin')
 
     parser.add_argument('--resize', type=str, default='0x0',
@@ -131,6 +137,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     image_url = args.image_url
+    post_url = args.post_url
     logger.info('Tracking image_url: %s' % image_url)
     elapsed = time.time() - t0
     logger.info('initialized imports and args in %.4f seconds.' % elapsed)
@@ -155,14 +162,22 @@ if __name__ == '__main__':
         print(threading.enumerate())
 
         # huemon tracker
-        t0 = None
+        t0 = time.time()
         c0 = 0
         while True:
-            if t0 is None:
-                t0 = time.time()
-            human = qp.human_queue.get()
+            (image, humans) = qp.human_queue.get()
             with queue_lock:
-                print(human)
+                # output humans
+                if post_url:
+                    #! t_print = time.time()
+                    image = TfPoseEstimator.draw_humans(image, humans, imgcopy=False)
+                    with io.BytesIO() as output:
+                        Image.fromarray(image).save(output, 'jpeg')
+                        requests.post(post_url, data=output.getvalue())
+                    #! elapsed_print = time.time() - t_print
+                    #! logger.info('posted humans image in %.4f seconds' % (elapsed_print))
+                else:
+                    print(humans)
                 c0 += 1
             qp.human_queue.task_done()
 
